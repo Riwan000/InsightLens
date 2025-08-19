@@ -1,46 +1,3 @@
-'''import os
-
-from backend.db import init_db
-from backend.ingest.news import fetch_newsapi
-from backend.ingest.rss import fetch_google_news_rss
-from backend.ingest.reddit import fetch_reddit
-from backend.ingest.youtube import fetch_youtube_trending
-from backend.ingest.gdelt import fetch_gdelt
-
-def run_ingestion():
-    print("🔧 Initializing DB…")
-    init_db()
-
-    # 🔹 Google News RSS (no key)
-    fetch_google_news_rss(topic=None, region="IN:en", max_items=10)
-
-    # 🔹 NewsAPI (free tier; skip if no key)
-    # Example: focus on SaaS/AI topics for demo
-    fetch_newsapi(query="SaaS OR startup OR AI", language="en", page_size=10)
-
-    # 🔹 Reddit (no key, rate limited – keep light)
-    fetch_reddit(subreddit="technology", sort="hot", limit=10)
-
-    # 🔹 YouTube (skip if no key)
-    fetch_youtube_trending(region_code="US", max_results=10)
-
-    # 🔹 GDELT (free; tune query as you like)
-    fetch_gdelt(query="SaaS OR startup OR technology OR finance", max_records=10)
-
-    print("✅ Ingestion complete.")
-
-if __name__ == "__main__":
-    # Optional: allow topic override via env for demo
-    topic = os.getenv("INSIGHTLENS_TOPIC")
-    if topic:
-        from backend.ingest.rss import fetch_google_news_rss
-        init_db()
-        fetch_google_news_rss(topic=topic, region="IN:en", max_items=10)
-        print("✅ Topic-specific RSS fetch complete.")
-    else:
-        run_ingestion()
-'''
-
 # backend/main.py
 import os
 from fastapi import FastAPI
@@ -50,10 +7,8 @@ from backend.db import init_db
 from backend.ingest.news import fetch_newsapi
 from backend.ingest.rss import fetch_google_news_rss
 from backend.ingest.reddit import fetch_reddit
-from backend.ingest.youtube import fetch_youtube_trending
+from backend.ingest.youtube import fetch_youtube_trending, fetch_youtube_search
 from backend.ingest.gdelt import fetch_gdelt
-from backend.search import search_router
-
 from backend.search import router as search_router
 
 # -------------------------------
@@ -74,6 +29,7 @@ def run_ingestion():
 
     # 🔹 YouTube
     fetch_youtube_trending(region_code="US", max_results=10)
+    fetch_youtube_search(query="AI news", max_results=10)
 
     # 🔹 GDELT
     fetch_gdelt(query="SaaS OR startup OR technology OR finance", max_records=10)

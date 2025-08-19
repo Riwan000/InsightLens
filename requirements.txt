@@ -1,2 +1,7 @@
 requests==2.32.3
 feedparser==6.0.11
+
+python-dotenv
+openai
+youtube-transcript-api
+beautifulsoup4

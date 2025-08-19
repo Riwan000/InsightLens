@@ -20,11 +20,10 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         source TEXT NOT NULL,
         title TEXT,
-        url TEXT,
+        url TEXT NOT NULL UNIQUE,
         content TEXT,
         published_at TEXT,
-        inserted_at TEXT DEFAULT (datetime('now')),
-        UNIQUE(source, url) ON CONFLICT IGNORE
+        inserted_at TEXT DEFAULT (datetime('now'))
     );
     """)
     conn.commit()

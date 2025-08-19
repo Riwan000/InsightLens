@@ -1,5 +1,6 @@
 import time
 import feedparser
+import urllib.parse
 from backend.db import save_insight
 
 def fetch_google_news_rss(topic: str = None, region: str = "IN:en", max_items: int = 10):
@@ -11,7 +12,8 @@ def fetch_google_news_rss(topic: str = None, region: str = "IN:en", max_items: i
         base = "https://news.google.com/rss"
         if topic:
             # topic query
-            url = f"{base}/search?q={topic}&hl=en-IN&gl=IN&ceid={region}"
+            encoded_topic = urllib.parse.quote_plus(topic)
+            url = f"{base}/search?q={encoded_topic}&hl=en-IN&gl=IN&ceid={region}"
         else:
             # top headlines for region
             url = f"{base}?hl=en-IN&gl=IN&ceid={region}"

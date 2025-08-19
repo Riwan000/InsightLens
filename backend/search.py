@@ -8,13 +8,14 @@ from .ingest.news import fetch_newsapi
 from .ingest.gdelt import fetch_gdelt
 from .ingest.reddit import fetch_reddit
 from .ingest.rss import fetch_google_news_rss
-from .ingest.youtube import fetch_youtube_trending
+import urllib.parse
+from .ingest.youtube import fetch_youtube_trending, fetch_youtube_search
+from .llm import summarize_insights
 
 router = APIRouter()
 
 def search_insights(
     query: str,
-    source: Optional[str] = None,
     limit: int = 20,
     offset: int = 0,
     start_date: Optional[str] = None,
@@ -37,9 +38,7 @@ def search_insights(
         kw = f"%{query}%"
         params.extend([kw, kw])
 
-    if source:
-        sql += " AND source = ?"
-        params.append(source)
+
 
     if start_date:
         sql += " AND date(published_at) >= date(?)"
@@ -60,7 +59,6 @@ def search_insights(
 @router.get("/search")
 def search_router(
     query: str = Query(..., description="Keyword(s) to search in title or content"),
-    source: Optional[str] = Query(None, description="Filter by source (rss, reddit, etc.)"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = 0,
     start_date: Optional[str] = None,
@@ -71,6 +69,12 @@ def search_router(
         fetch_newsapi(query=query, page_size=limit)
         fetch_gdelt(query=query, max_records=limit)
         fetch_google_news_rss(topic=query, max_items=limit)
-        fetch_reddit(subreddit=query, limit=limit)
-        fetch_youtube_trending(region_code="US", max_results=limit)
-    return search_insights(query, source, limit, offset, start_date, end_date)
+        # Replace spaces with underscores for subreddit names
+        reddit_query = query.replace(" ", "_")
+        fetch_reddit(subreddit=reddit_query, limit=limit)
+        fetch_youtube_search(query=query, max_results=limit)
+    insights = search_insights(query, limit, offset, start_date, end_date)
+    print(f"Insights retrieved: {len(insights)} items")
+    # print(insights) # Uncomment for full insights content if needed
+    summary = summarize_insights(query, insights)
+    return {"results": insights, "summary": summary}
