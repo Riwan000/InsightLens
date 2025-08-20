@@ -64,17 +64,35 @@ def search_router(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
 ):
+    newly_fetched_insights = []
+    existing_insights = []
+
     # Fetch from all sources and save to DB before searching
     if query:
-        fetch_newsapi(query=query, page_size=limit)
-        fetch_gdelt(query=query, max_records=limit)
-        fetch_google_news_rss(topic=query, max_items=limit)
-        # Replace spaces with underscores for subreddit names
+        # Fetch from all sources and save to DB
+        # These functions now return the fetched data as well
+        news_insights = fetch_newsapi(query=query, page_size=limit)
+        gdelt_insights = fetch_gdelt(query=query, max_records=limit)
+        google_news_insights = fetch_google_news_rss(topic=query, max_items=limit)
         reddit_query = query.replace(" ", "_")
-        fetch_reddit(subreddit=reddit_query, limit=limit)
-        fetch_youtube_search(query=query, max_results=limit)
-    insights = search_insights(query, limit, offset, start_date, end_date)
-    print(f"Insights retrieved: {len(insights)} items")
-    # print(insights) # Uncomment for full insights content if needed
-    summary = summarize_insights(query, insights)
-    return {"results": insights, "summary": summary}
+        reddit_insights = fetch_reddit(subreddit=reddit_query, limit=limit)
+        youtube_insights = fetch_youtube_search(query=query, max_results=limit)
+
+        # Combine newly fetched insights
+        newly_fetched_insights = []
+        if news_insights: newly_fetched_insights.extend(news_insights)
+        if gdelt_insights: newly_fetched_insights.extend(gdelt_insights)
+        if google_news_insights: newly_fetched_insights.extend(google_news_insights)
+        if reddit_insights: newly_fetched_insights.extend(reddit_insights)
+        if youtube_insights: newly_fetched_insights.extend(youtube_insights)
+
+    # Retrieve existing insights from the database
+    existing_insights = search_insights(query, limit, offset, start_date, end_date)
+
+    # Combine existing and newly fetched insights for summarization
+    all_insights = existing_insights + newly_fetched_insights
+
+    print(f"Total insights for summarization: {len(all_insights)} items")
+    print(f"All insights content: {all_insights}")
+    summary = summarize_insights(query, all_insights)
+    return {"results": existing_insights, "summary": summary}

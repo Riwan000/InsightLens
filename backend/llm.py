@@ -12,11 +12,17 @@ LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini") # Default to a cost-effective 
 
 def get_llm_client():
     if LLM_PROVIDER == "openrouter":
+        if not OPENROUTER_API_KEY:
+            print("⚠️ OPENROUTER_API_KEY not set")
+            return None
         return OpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=OPENROUTER_API_KEY,
         )
     else: # Default to openai
+        if not OPENAI_API_KEY:
+            print("⚠️ OPENAI_API_KEY not set")
+            return None
         return OpenAI(api_key=OPENAI_API_KEY)
 
 client = get_llm_client()
@@ -30,14 +36,28 @@ def summarize_insights(query: str, insights: list, max_tokens: int = 500):
             "recommendations": [],
             "citations": []
         }
+        
+    if client is None:
+        print("⚠️ LLM client initialization failed. Skipping summarization.")
+        return {
+            "text": "LLM summarization skipped: Client initialization failed.",
+            "bullets": [],
+            "recommendations": [],
+            "citations": []
+        }
 
     if not insights:
+        print("⚠️ No insights provided to summarize_insights function")
         return {
             "text": "No insights to summarize.",
             "bullets": [],
             "recommendations": [],
             "citations": []
         }
+    
+    print(f"📊 Summarizing {len(insights)} insights")
+    print(f"📝 First insight sample: {insights[0] if insights else 'None'}")
+    print(f"🔍 Query: {query}")
 
     # Prepare insights for the LLM
     insight_texts = []
@@ -49,8 +69,8 @@ def summarize_insights(query: str, insights: list, max_tokens: int = 500):
             soup = BeautifulSoup(cleaned_content, 'html.parser')
             cleaned_content = soup.get_text()
 
-        # Clean URL: remove backticks if present
-        cleaned_url = insight.get('url', 'N/A').replace('`', '')
+        # Clean URL: remove backticks and extra spaces if present
+        cleaned_url = insight.get('url', 'N/A').strip().replace('`', '').strip()
 
         insight_texts.append(f"Article {i+1}:\nTitle: {insight.get('title', 'N/A')}\nContent: {cleaned_content}\nURL: {cleaned_url}\n")
         citations.append(cleaned_url)
@@ -63,7 +83,8 @@ Articles:
 {'\n---\n'.join(insight_texts)}
 
 Format your response as follows:
-Summary: [paragraph summary]
+Summary: 
+[paragraph summary]
 Key Insights:
 - [bullet point 1]
 - [bullet point 2]
@@ -76,6 +97,10 @@ Citations: [URL1, URL2, URL3,...]
 """
 
     try:
+        # Print the prompt for debugging
+        print(f"🔤 Prompt length: {len(prompt)} characters")
+        print(f"🔤 First 500 chars of prompt: {prompt[:500]}...")
+        
         chat_completion = client.chat.completions.create(
             model=LLM_MODEL,
             messages=[
@@ -123,9 +148,35 @@ Citations: [URL1, URL2, URL3,...]
 
     except Exception as e:
         print(f"❌ LLM summarization error: {e}")
-        return {
-            "text": f"LLM summarization failed: {e}",
-            "bullets": [],
-            "recommendations": [],
-            "citations": []
-        }
+        
+        # Generate a basic fallback summary from the insights
+        try:
+            fallback_summary = "Summary based on available insights:"
+            fallback_bullets = []
+            fallback_recommendations = ["Review the original sources for more detailed information"]
+            fallback_citations = []
+            
+            # Extract some basic information from insights
+            for i, insight in enumerate(insights[:5]):  # Use up to 5 insights
+                title = insight.get('title', 'N/A')
+                if title != 'N/A' and len(title) > 5:  # Only use meaningful titles
+                    fallback_bullets.append(f"Information from: {title}")
+                    
+                url = insight.get('url', 'N/A')
+                if url != 'N/A':
+                    fallback_citations.append(url)
+            
+            return {
+                "text": fallback_summary,
+                "bullets": fallback_bullets,
+                "recommendations": fallback_recommendations,
+                "citations": fallback_citations
+            }
+        except Exception as fallback_error:
+            print(f"❌ Even fallback summary generation failed: {fallback_error}")
+            return {
+                "text": f"LLM summarization failed: {e}",
+                "bullets": [],
+                "recommendations": [],
+                "citations": []
+            }

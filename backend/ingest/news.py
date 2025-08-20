@@ -39,14 +39,19 @@ def fetch_newsapi(query: str = None, language: str = "en", page_size: int = 10):
         r.raise_for_status()
         data = r.json()
 
+        insights = []
         for art in data.get("articles", []):
-            save_insight(
-                source="newsapi",
-                title=art.get("title") or "",
-                url=art.get("url") or "",
-                content=art.get("description") or (art.get("content") or ""),
-                published_at=art.get("publishedAt") or "",
-            )
-        print(f"✅ NewsAPI: stored {len(data.get('articles', []))} items.")
+            insight = {
+                "source": "newsapi",
+                "title": art.get("title") or "",
+                "url": art.get("url") or "",
+                "content": art.get("description") or (art.get("content") or ""),
+                "published_at": art.get("publishedAt") or "",
+            }
+            save_insight(**insight)
+            insights.append(insight)
+        print(f"✅ NewsAPI: stored {len(insights)} items.")
+        return insights
     except Exception as e:
         print(f"❌ NewsAPI error: {e}")
+        return []

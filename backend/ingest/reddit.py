@@ -1,5 +1,6 @@
 import time
 import requests
+import time
 from backend.db import save_insight
 
 HEADERS = {"User-Agent": "InsightLens/0.1 (+https://example.com)"}
@@ -21,14 +22,19 @@ def fetch_reddit(subreddit: str = "worldnews", sort: str = "hot", limit: int = 1
             p = post.get("data", {})
             created_utc = p.get("created_utc")
             published_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(created_utc)) if created_utc else ""
-            save_insight(
-                source="reddit",
-                title=p.get("title", ""),
-                url=("https://reddit.com" + p.get("permalink", "")),
-                content=p.get("selftext", ""),
-                published_at=published_iso,
-            )
+            insights = []
+            insight = {
+                "source": "reddit",
+                "title": p.get("title", ""),
+                "url": ("https://reddit.com" + p.get("permalink", "")),
+                "content": p.get("selftext", ""),
+                "published_at": published_iso,
+            }
+            save_insight(**insight)
+            insights.append(insight)
             count += 1
         print(f"✅ Reddit: stored {count} items from r/{subreddit}.")
+        return insights
     except Exception as e:
         print(f"❌ Reddit error: {e}")
+        return []

@@ -2,6 +2,7 @@ import requests
 import os
 import time
 from typing import Optional
+import requests
 from dotenv import load_dotenv
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
 from backend.db import save_insight
@@ -42,16 +43,20 @@ def fetch_youtube_trending(region_code: str = "US", max_results: int = 10):
             except Exception as e:
                 print(f"Error fetching transcript for video {video_id}: {e}")
 
-            save_insight(
-                source="youtube_trending",
-                title=sn["title"],
-                url=f"https://www.youtube.com/watch?v={video_id}",
-                content=content,
-                published_at=sn["publishedAt"],
-            )
-        print(f"✅ YouTube: stored {len(items)} trending items.")
+            insight = {
+                "source": "youtube_trending",
+                "title": sn["title"],
+                "url": f"https://www.youtube.com/watch?v={video_id}",
+                "content": content,
+                "published_at": sn["publishedAt"],
+            }
+            save_insight(**insight)
+            insights.append(insight)
+        print(f"✅ YouTube: stored {len(insights)} trending items.")
+        return insights
     except Exception as e:
         print(f"❌ YouTube error: {e}")
+        return []
 
 def fetch_youtube_search(query: str, max_results: int = 10):
     if not YOUTUBE_API_KEY:
@@ -86,13 +91,17 @@ def fetch_youtube_search(query: str, max_results: int = 10):
             except Exception as e:
                 print(f"Error fetching transcript for video {video_id}: {e}")
 
-            save_insight(
-                source="youtube_search",
-                title=sn["title"],
-                url=f"https://www.youtube.com/watch?v={video_id}",
-                content=content,
-                published_at=sn["publishedAt"],
-            )
-        print(f"✅ YouTube: stored {len(items)} search results for '{query}'.")
+            insight = {
+                "source": "youtube_search",
+                "title": sn["title"],
+                "url": f"https://www.youtube.com/watch?v={video_id}",
+                "content": content,
+                "published_at": sn["publishedAt"],
+            }
+            save_insight(**insight)
+            insights.append(insight)
+        print(f"✅ YouTube: stored {len(insights)} search results for '{query}'.")
+        return insights
     except Exception as e:
         print(f"❌ YouTube search error: {e}")
+        return []

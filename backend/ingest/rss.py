@@ -1,6 +1,7 @@
 import time
 import feedparser
 import urllib.parse
+import time
 from backend.db import save_insight
 
 def fetch_google_news_rss(topic: str = None, region: str = "IN:en", max_items: int = 10):
@@ -23,14 +24,18 @@ def fetch_google_news_rss(topic: str = None, region: str = "IN:en", max_items: i
         for entry in feed.entries[:max_items]:
             published_struct = entry.get("published_parsed")
             published_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", published_struct) if published_struct else ""
-            save_insight(
-                source="google_rss",
-                title=entry.get("title", ""),
-                url=entry.get("link", ""),
-                content=entry.get("summary", ""),
-                published_at=published_iso,
-            )
+            insight = {
+                "source": "google_rss",
+                "title": entry.get("title", ""),
+                "url": entry.get("link", ""),
+                "content": entry.get("summary", ""),
+                "published_at": published_iso,
+            }
+            save_insight(**insight)
+            insights.append(insight)
             count += 1
         print(f"✅ Google RSS: stored {count} items.")
+        return insights
     except Exception as e:
         print(f"❌ Google RSS error: {e}")
+        return []
