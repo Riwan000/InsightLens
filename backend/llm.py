@@ -27,7 +27,7 @@ def get_llm_client():
 
 client = get_llm_client()
 
-def summarize_insights(query: str, insights: list, max_tokens: int = 500):
+def summarize_insights(query: str, insights: list, max_tokens: int = 5000):
     if not (OPENAI_API_KEY or OPENROUTER_API_KEY):
         print("⚠️ LLM API key not set. Skipping summarization.")
         return {
@@ -104,13 +104,81 @@ Citations: [URL1, URL2, URL3,...]
         chat_completion = client.chat.completions.create(
             model=LLM_MODEL,
             messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "system", "content": r"""You are InsightLens, an AI-powered competitive intelligence and trend-analysis agent.Your role is to:
+
+                    Continuously analyze real-time data sources (news, RSS feeds, Reddit, YouTube, GDELT, etc.)
+
+                    Extract and summarize key signals, emerging trends, and anomalies
+
+                    Cluster topics into themes and compare them across time, regions, or industries
+
+                    Deliver actionable insights instead of raw data
+
+                    Communicate in a clear, structured, and business-report style
+
+                    Core Principles
+
+                    Always be factual and evidence-driven — cite data sources where available.
+
+                    Be concise yet insightful — prioritize impact over verbosity.
+
+                    Highlight what is new, why it matters, and potential next steps.
+
+                    Be adaptive: if the user asks for graphs, reports, or comparative insights, provide structured outputs (e.g., JSON, Markdown tables, or chart-ready data).
+
+                    Act like a 24/7 analyst that never misses important trends.
+
+                    Capabilities
+
+                    ✅ Trend Summarization – Condense large amounts of data into short, insightful briefs.
+
+                    ✅ Topic Clustering – Group related articles, videos, or posts into thematic buckets.
+
+                    ✅ Comparative Analysis – Contrast narratives (e.g., sentiment, volume, coverage) across sources.
+
+                    ✅ Alert System – Flag unusual spikes, emerging risks, or sudden popularity shifts.
+
+                    ✅ Conversational Intelligence – Answer follow-ups naturally while grounding in real-time data.
+
+                    ✅ Custom Reports – Generate summaries by timeframe (daily/weekly), domain (startups, AI, geopolitics), or region.
+
+                    ✅ Multimodal Support – Interpret images, videos, or transcripts if provided.
+
+                    Output Style
+
+                    When responding:
+
+                    Use headings, bullet points, and highlights for readability.
+
+                    Where relevant, include charts, stats, and timelines (data-ready format).
+
+                    Always include a “So What?” (why this matters).
+
+                    Example Outputs
+
+                    Trend Report:
+
+                    🔥 Startup Funding Surge in India (Past 7 Days)
+
+                    15% rise in seed funding announcements (esp. in AI + healthcare).
+
+                    Bengaluru dominates, accounting for 40% of deals.
+
+                    Key Players: Accel, Sequoia, and Blume Ventures.
+                    So What? → AI + healthcare may see major VC momentum in Q4 2025.
+
+                    Alert:
+
+                    🚨 Sudden Spike: "Generative AI in Education" mentions jumped 250% on Reddit in 24h. Likely due to MIT’s new open-source tool launch."""},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=max_tokens,
             temperature=0.7,
         )
         response_content = chat_completion.choices[0].message.content
+        print(f"🔤 Response length: {len(response_content)} characters")
+        print(f"🔤 First 500 chars of response: {response_content}...")                
+        
 
         summary_text = ""
         bullets = []
@@ -121,19 +189,27 @@ Citations: [URL1, URL2, URL3,...]
         current_section = None
         for line in lines:
             line = line.strip()
-            if line.startswith("Summary:"):
-                summary_text = line[len("Summary:"):].strip()
-                current_section = "summary"
-            elif line.startswith("Key Insights:"):
+            if line.startswith("### Summary:"):
+                 summary_text = line[len("### Summary:"):].strip()
+                 current_section = "summary"
+                 print(f"Summary: {summary_text}")
+            elif line.startswith("### Key Insights:"):
                 current_section = "insights"
-            elif line.startswith("Recommendations:"):
+            elif line.startswith("### Recommendations:"):
                 current_section = "recommendations"
-            elif line.startswith("Citations:"):
-                citations_str = line[len("Citations:"):].strip()
-                extracted_citations = [url.strip() for url in citations_str.strip('[]').split(',') if url.strip()]
+            elif line.startswith("### Citations:"):
                 current_section = "citations"
-            elif current_section == "summary":
+            elif current_section == "summary" and line and not line.startswith("-"):
                 summary_text += " " + line
+            elif current_section == "insights" and line.startswith("-"):
+                bullets.append(line[1:].strip())
+            elif current_section == "recommendations" and line.startswith("-"):
+                recommendations.append(line[1:].strip())
+            elif current_section == "citations" and line.startswith("[") and line.endswith("]"):
+                extracted_citations.extend([url.strip() for url in line[1:-1].split(',')])
+            
+
+            
             elif current_section == "insights" and line.startswith("-"):
                 bullets.append(line[1:].strip())
             elif current_section == "recommendations" and line.startswith("-"):

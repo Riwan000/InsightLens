@@ -95,4 +95,5 @@ def search_router(
     print(f"Total insights for summarization: {len(all_insights)} items")
     print(f"All insights content: {all_insights}")
     summary = summarize_insights(query, all_insights)
-    return {"results": existing_insights, "summary": summary}
+    return {"results": all_insights, "summary": summary}
+
